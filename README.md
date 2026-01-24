@@ -1,6 +1,10 @@
 # Sheet Slider
 
+
 A web application for viewing music sheets with drag-and-drop functionality.
+
+**Live Demo:** [https://marcjoha.github.io/sheet-slider/](https://marcjoha.github.io/sheet-slider/)
+
 
 ## Getting Started
 
