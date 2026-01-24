@@ -27,7 +27,7 @@ function App() {
   const handleLoadDefault = async () => {
     setIsProcessing(true);
     try {
-      const response = await fetch('/demo.pdf');
+      const response = await fetch(import.meta.env.BASE_URL + 'demo.pdf');
       const blob = await response.blob();
       const file = new File([blob], 'demo.pdf', { type: 'application/pdf' });
       await handleFile(file);
