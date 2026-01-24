@@ -53,7 +53,8 @@ export const UploadScreen = ({ onFileSelected, onLoadDefault, isProcessing }: Pr
 
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <button onClick={onLoadDefault} disabled={isProcessing}>
-                    Load Demo (Tears in Heaven)
+                    Tears in Heaven
+
                 </button>
             </div>
 
