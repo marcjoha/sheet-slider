@@ -19,7 +19,6 @@ export const UploadScreen = ({ onFileSelected, onLoadDefault, isProcessing }: Pr
     });
 
     return (
-    return (
         <div
             style={{
                 flex: 1,
