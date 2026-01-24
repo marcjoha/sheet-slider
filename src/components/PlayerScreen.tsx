@@ -5,7 +5,7 @@ interface Props {
     onReset: () => void;
 }
 
-export const PlayerScreen = ({ lines, onReset }: Props) => {
+export const PlayerScreen = ({ lines }: Props) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [speed, setSpeed] = useState(2); // pixels per frame
     const [offset, setOffset] = useState(0);

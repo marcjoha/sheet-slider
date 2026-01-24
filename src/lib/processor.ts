@@ -160,7 +160,7 @@ function detectAndSliceLines(canvas: HTMLCanvasElement, ctx: CanvasRenderingCont
             // Include some top margin
             topCut = Math.max(0, sys.start - 50);
         } else {
-            const prevSys = validSystems[index - 1];
+            // const prevSys = validSystems[index - 1];
             // Since we filtered, the 'previous system' in the list is the previous *valid* music line.
             // We should ideally cut at the midpoint of the gap between them.
             // Note: The 'gap' might now contain the discarded text/chords. 
