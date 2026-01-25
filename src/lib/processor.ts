@@ -116,7 +116,52 @@ function detectAndSliceLines(canvas: HTMLCanvasElement, ctx: CanvasRenderingCont
         const region = mergedRegions[i];
         const gap = region.start - currentSystem.end;
 
+        // Check for vertical bracket/line in the gap on the left side
+        // If a vertical line connects them, they are part of the same system.
+        let isConnected = false;
+
+        // Only check if the gap is "significant" enough to potentially cause a split
+        // optimization: strict check only if we WOULD split
         if (gap > SYSTEM_CUT_THRESHOLD) {
+            const gapStart = currentSystem.end;
+            const gapEnd = region.start;
+            const scanWidth = Math.min(width, 100); // Check first 100px (standard left margin for brackets)
+
+            let connectedRows = 0;
+            const totalRows = gapEnd - gapStart;
+
+            if (totalRows > 0) {
+                for (let y = gapStart; y < gapEnd; y++) {
+                    let hasInkInMargin = false;
+                    // Quick scan of the row in the margin area
+                    // Accessing raw data array
+                    // Row start index in data array
+                    const rowStartIdx = (y * width) * 4;
+
+                    for (let x = 0; x < scanWidth; x++) {
+                        const idx = rowStartIdx + (x * 4);
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+                        // Simple brightness
+                        const brightness = (r + g + b) / 3;
+                        if (brightness < 150) { // Dark pixel found (conservative threshold)
+                            hasInkInMargin = true;
+                            break;
+                        }
+                    }
+                    if (hasInkInMargin) connectedRows++;
+                }
+
+                // If the vertical line is solid (allowing for some noise/aliasing), 
+                // we should see ink in almost all rows.
+                if ((connectedRows / totalRows) > 0.8) {
+                    isConnected = true;
+                }
+            }
+        }
+
+        if (gap > SYSTEM_CUT_THRESHOLD && !isConnected) {
             systems.push(currentSystem);
             currentSystem = region;
         } else {

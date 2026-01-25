@@ -11,17 +11,22 @@ export const PlayerScreen = ({ lines }: Props) => {
     const [offset, setOffset] = useState(0);
     const [zoomLevel, setZoomLevel] = useState(100); // percentage
 
+    // Drag state
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartX = useRef<number>(0);
+    const initialOffset = useRef<number>(0);
+
     const requestRef = useRef<number | undefined>(undefined);
 
     const animate = useCallback(() => {
-        if (isPlaying) {
+        if (isPlaying && !isDragging) {
             setOffset(prev => prev + speed);
             requestRef.current = requestAnimationFrame(animate);
         }
-    }, [isPlaying, speed]);
+    }, [isPlaying, speed, isDragging]);
 
     useEffect(() => {
-        if (isPlaying) {
+        if (isPlaying && !isDragging) {
             requestRef.current = requestAnimationFrame(animate);
         } else {
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
@@ -29,7 +34,7 @@ export const PlayerScreen = ({ lines }: Props) => {
         return () => {
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
         };
-    }, [isPlaying, animate]);
+    }, [isPlaying, animate, isDragging]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,11 +42,51 @@ export const PlayerScreen = ({ lines }: Props) => {
                 e.preventDefault();
                 setIsPlaying(prev => !prev);
             }
+
+            // Handle Zoom
+            if (e.metaKey || e.ctrlKey) {
+                if (e.key === '=' || e.key === '+') {
+                    e.preventDefault();
+                    setZoomLevel(z => Math.min(200, z + 10));
+                } else if (e.key === '-') {
+                    e.preventDefault();
+                    setZoomLevel(z => Math.max(50, z - 10));
+                } else if (e.key === '0') {
+                    e.preventDefault();
+                    setZoomLevel(100);
+                }
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        dragStartX.current = e.clientX;
+        initialOffset.current = offset;
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        const delta = e.clientX - dragStartX.current;
+        // Dragging right (positive delta) should move content right (decrease offset normally acts as moving content left, wait...
+        // translateX(-offset). 
+        // If offset increases, content moves left.
+        // If I drag mouse right, I want content to move right.
+        // So offset must DECREASE.
+        // offset = initialOffset - delta
+        setOffset(initialOffset.current - delta);
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseLeave = () => {
+        if (isDragging) setIsDragging(false);
+    };
 
     const imageHeight = (zoomLevel / 100) * 300;
 
@@ -52,6 +97,10 @@ export const PlayerScreen = ({ lines }: Props) => {
 
             {/* Viewport */}
             <div
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
                 style={{
                     flex: 1,
                     display: 'flex',
@@ -60,7 +109,8 @@ export const PlayerScreen = ({ lines }: Props) => {
                     overflow: 'hidden',
                     background: 'var(--base3)',
                     borderTop: '1px solid var(--base2)',
-                    borderBottom: '1px solid var(--base2)'
+                    borderBottom: '1px solid var(--base2)',
+                    cursor: isDragging ? 'grabbing' : 'grab'
                 }}
             >
                 {/* Track */}
@@ -90,7 +140,9 @@ export const PlayerScreen = ({ lines }: Props) => {
                                 width: 'auto',
                                 marginRight: '0', // No gap between lines
                                 border: '1px dashed var(--base2)',
-                                background: 'white'
+                                background: 'white',
+                                pointerEvents: 'none', // Prevent image dragging ghost
+                                userSelect: 'none'
                             }}
                         />
                     ))}
@@ -122,26 +174,34 @@ export const PlayerScreen = ({ lines }: Props) => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '1.5rem',
                         background: 'var(--accent-color)',
                         color: 'white',
-                        border: 'none'
+                        border: 'none',
+                        cursor: 'pointer'
                     }}
                 >
-                    {isPlaying ? '⏸' : '▶'}
+                    {isPlaying ? (
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
+                    ) : (
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    )}
                 </button>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <span style={{ fontWeight: 500 }}>Speed</span>
                     <button
-                        onClick={() => setSpeed(s => Math.max(0.5, s - 0.5))}
+                        onClick={() => setSpeed(s => Math.max(0.1, s - 0.1))}
                         style={{ padding: '0.25em 0.75em' }}
                     >
                         -
                     </button>
                     <span style={{ width: '3ch', textAlign: 'center', fontWeight: 'bold' }}>{speed.toFixed(1)}</span>
                     <button
-                        onClick={() => setSpeed(s => Math.min(10, s + 0.5))}
+                        onClick={() => setSpeed(s => Math.min(10, s + 0.1))}
                         style={{ padding: '0.25em 0.75em' }}
                     >
                         +
