@@ -1,9 +1,8 @@
 // @ts-ignore
 import * as pdfjs from 'pdfjs-dist/build/pdf.mjs';
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Point to the worker file in the public folder
-// We copied it from node_modules/pdfjs-dist/build/pdf.worker.min.mjs to public/
-pdfjs.GlobalWorkerOptions.workerSrc = import.meta.env.BASE_URL + 'pdf.worker.min.mjs';
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export async function processPDF(file: File): Promise<string[]> {
     const arrayBuffer = await file.arrayBuffer();
