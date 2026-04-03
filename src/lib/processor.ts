@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error missing typings
 import * as pdfjs from 'pdfjs-dist/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 

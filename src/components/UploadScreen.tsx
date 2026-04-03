@@ -30,19 +30,24 @@ export const UploadScreen = ({ onFileSelected, onLoadDefault, isProcessing }: Pr
                 fontFamily: 'Georgia, "Times New Roman", Times, serif'
             }}
         >
-            <h1 style={{ color: 'var(--yellow)', fontSize: '3rem', margin: 0 }}>Sheet Slider</h1>
+            <h1 style={{ 
+                color: 'var(--yellow)', 
+                fontSize: 'clamp(2rem, 8vw, 3rem)', 
+                margin: 0,
+                textAlign: 'center'
+            }}>Sheet Slider</h1>
 
             <div
                 {...getRootProps()}
                 style={{
                     border: '2px dashed var(--base1)',
                     borderRadius: '8px',
-                    padding: '4rem',
+                    padding: 'clamp(2rem, 10vw, 4rem)',
                     backgroundColor: isDragActive ? 'var(--base2)' : 'transparent',
                     cursor: 'pointer',
                     textAlign: 'center',
                     transition: 'all 0.2s ease',
-                    maxWidth: '600px',
+                    maxWidth: 'min(600px, 90%)',
                     width: '100%'
                 }}
             >

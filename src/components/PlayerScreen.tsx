@@ -5,7 +5,7 @@ interface Props {
     onReset: () => void;
 }
 
-export const PlayerScreen = ({ lines }: Props) => {
+export const PlayerScreen = ({ lines, onReset }: Props) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [speed, setSpeed] = useState(2); // pixels per frame
     const [offset, setOffset] = useState(0);
@@ -16,12 +16,50 @@ export const PlayerScreen = ({ lines }: Props) => {
     const dragStartX = useRef<number>(0);
     const initialOffset = useRef<number>(0);
 
+    // Idle state
+    const [isIdle, setIsIdle] = useState(false);
+    const idleTimeout = useRef<number | undefined>(undefined);
+
+    useEffect(() => {
+        let lastX = -1;
+        let lastY = -1;
+
+        const resetIdle = (e?: Event) => {
+            // Check if it's a mouse event and if coordinates actually changed
+            if (e && e.type === 'mousemove') {
+                const mouseEvent = e as MouseEvent;
+                if (mouseEvent.clientX === lastX && mouseEvent.clientY === lastY) {
+                    return; // Ignore fake mousemove from DOM changes under cursor
+                }
+                lastX = mouseEvent.clientX;
+                lastY = mouseEvent.clientY;
+            }
+
+            setIsIdle(false);
+            if (idleTimeout.current) clearTimeout(idleTimeout.current);
+            idleTimeout.current = window.setTimeout(() => setIsIdle(true), 2500);
+        };
+
+        window.addEventListener('mousemove', resetIdle);
+        window.addEventListener('keydown', resetIdle);
+        window.addEventListener('touchstart', resetIdle);
+
+        resetIdle();
+
+        return () => {
+            window.removeEventListener('mousemove', resetIdle);
+            window.removeEventListener('keydown', resetIdle);
+            window.removeEventListener('touchstart', resetIdle);
+            if (idleTimeout.current) clearTimeout(idleTimeout.current);
+        };
+    }, []);
+
     const requestRef = useRef<number | undefined>(undefined);
 
-    const animate = useCallback(() => {
+    const animate = useCallback(function animateFrame() {
         if (isPlaying && !isDragging) {
             setOffset(prev => prev + speed);
-            requestRef.current = requestAnimationFrame(animate);
+            requestRef.current = requestAnimationFrame(animateFrame);
         }
     }, [isPlaying, speed, isDragging]);
 
@@ -71,12 +109,6 @@ export const PlayerScreen = ({ lines }: Props) => {
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!isDragging) return;
         const delta = e.clientX - dragStartX.current;
-        // Dragging right (positive delta) should move content right (decrease offset normally acts as moving content left, wait...
-        // translateX(-offset). 
-        // If offset increases, content moves left.
-        // If I drag mouse right, I want content to move right.
-        // So offset must DECREASE.
-        // offset = initialOffset - delta
         setOffset(initialOffset.current - delta);
     };
 
@@ -88,11 +120,34 @@ export const PlayerScreen = ({ lines }: Props) => {
         if (isDragging) setIsDragging(false);
     };
 
-    const imageHeight = (zoomLevel / 100) * 300;
+    const imageHeight = (zoomLevel / 100) * 450;
+    const showControls = !isPlaying || !isIdle;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative', cursor: isPlaying && isIdle && !isDragging ? 'none' : 'default' }}>
 
+            {/* Back Button (Top Left) */}
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0,
+                padding: 'clamp(0.5rem, 4vw, 1.5rem)',
+                zIndex: 20,
+                transition: 'opacity 0.5s ease',
+                opacity: showControls ? 1 : 0,
+                pointerEvents: showControls ? 'auto' : 'none'
+            }}>
+                <button onClick={onReset} style={{ 
+                    padding: '0.5rem 1rem', 
+                    borderRadius: '8px', 
+                    border: 'none', 
+                    background: 'var(--base2)', 
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                    fontWeight: 600
+                }}>
+                    ← Back
+                </button>
+            </div>
 
 
             {/* Viewport */}
@@ -108,9 +163,7 @@ export const PlayerScreen = ({ lines }: Props) => {
                     position: 'relative',
                     overflow: 'hidden',
                     background: 'var(--base3)',
-                    borderTop: '1px solid var(--base2)',
-                    borderBottom: '1px solid var(--base2)',
-                    cursor: isDragging ? 'grabbing' : 'grab'
+                    cursor: isDragging ? 'grabbing' : isPlaying && isIdle ? 'none' : 'grab'
                 }}
             >
                 {/* Track */}
@@ -123,11 +176,6 @@ export const PlayerScreen = ({ lines }: Props) => {
                         willChange: 'transform'
                     }}
                 >
-                    {/* Spacer to start from right edge? Or start immediately? 
-              User request: "rolling fashion across the screen".
-              Usually starts at right edge and moves left? Or starts center?
-              Let's start with some padding.
-          */}
                     <div style={{ width: '50vw', flexShrink: 0 }} />
 
                     {lines.map((line, i) => (
@@ -136,12 +184,12 @@ export const PlayerScreen = ({ lines }: Props) => {
                             src={line}
                             alt={`Line ${i}`}
                             style={{
-                                height: `${imageHeight}px`, // Scaled height
+                                height: `${imageHeight}px`,
                                 width: 'auto',
-                                marginRight: '0', // No gap between lines
+                                marginRight: '0',
                                 border: '1px dashed var(--base2)',
                                 background: 'white',
-                                pointerEvents: 'none', // Prevent image dragging ghost
+                                pointerEvents: 'none',
                                 userSelect: 'none'
                             }}
                         />
@@ -149,21 +197,29 @@ export const PlayerScreen = ({ lines }: Props) => {
 
                     <div style={{ width: '50vw', flexShrink: 0 }} />
                 </div>
-
-
             </div>
 
             {/* Controls */}
             <div style={{
-                padding: '1.5rem',
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: 'clamp(0.75rem, 3vw, 1.5rem)',
                 background: 'var(--base2)',
                 display: 'flex',
-                gap: '2rem',
+                gap: 'clamp(0.5rem, 4vw, 2rem)',
+                flexWrap: 'wrap',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 -2px 10px rgba(0,0,0,0.05)'
+                boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+                transition: 'transform 0.5s ease, opacity 0.5s ease',
+                transform: showControls ? 'translateY(0)' : 'translateY(100%)',
+                opacity: showControls ? 1 : 0,
+                pointerEvents: showControls ? 'auto' : 'none',
+                zIndex: 10
             }}>
-                <button onClick={() => setOffset(0)} style={{ fontSize: '1.2rem' }}>⏮</button>
+                <button onClick={() => setOffset(0)} style={{ fontSize: '1.2rem', cursor: 'pointer', background: 'transparent', border: 'none' }}>⏮</button>
 
                 <button
                     onClick={() => setIsPlaying(!isPlaying)}
@@ -195,14 +251,14 @@ export const PlayerScreen = ({ lines }: Props) => {
                     <span style={{ fontWeight: 500 }}>Speed</span>
                     <button
                         onClick={() => setSpeed(s => Math.max(0.1, s - 0.1))}
-                        style={{ padding: '0.25em 0.75em' }}
+                        style={{ padding: '0.25em 0.75em', cursor: 'pointer' }}
                     >
                         -
                     </button>
                     <span style={{ width: '3ch', textAlign: 'center', fontWeight: 'bold' }}>{speed.toFixed(1)}</span>
                     <button
                         onClick={() => setSpeed(s => Math.min(10, s + 0.1))}
-                        style={{ padding: '0.25em 0.75em' }}
+                        style={{ padding: '0.25em 0.75em', cursor: 'pointer' }}
                     >
                         +
                     </button>
@@ -212,14 +268,14 @@ export const PlayerScreen = ({ lines }: Props) => {
                     <span style={{ fontWeight: 500 }}>Size</span>
                     <button
                         onClick={() => setZoomLevel(z => Math.max(50, z - 10))}
-                        style={{ padding: '0.25em 0.75em' }}
+                        style={{ padding: '0.25em 0.75em', cursor: 'pointer' }}
                     >
                         -
                     </button>
                     <span style={{ width: '4ch', textAlign: 'center', fontWeight: 'bold' }}>{zoomLevel}%</span>
                     <button
                         onClick={() => setZoomLevel(z => Math.min(200, z + 10))}
-                        style={{ padding: '0.25em 0.75em' }}
+                        style={{ padding: '0.25em 0.75em', cursor: 'pointer' }}
                     >
                         +
                     </button>
